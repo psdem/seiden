@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
-from scipy.special import logit, expit
+# from scipy.special import logit, expit
 
-from supg.datasource import DFDataSource
+from benchmarks.stanford.supg.supg.datasource import DFDataSource
 
 
 class BetaDataSource(DFDataSource):

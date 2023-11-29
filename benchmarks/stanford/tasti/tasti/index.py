@@ -1,9 +1,11 @@
 import torch
-import torchvision
-import tasti
+# import torchvision
 import numpy as np
 import os
 from tqdm.autonotebook import tqdm
+
+from benchmarks.stanford.tasti import tasti
+
 
 class Index:
     def __init__(self, config):
@@ -34,49 +36,49 @@ class Index:
         outputs available somewhere. Returning a list or another 1-D indexable element will work.
         '''
         return target_dnn_cache
-        
+
     def is_close(self, a, b):
         '''
         Define your notion of "closeness" as described in the paper between records "a" and "b".
         Return a Boolean.
         '''
         raise NotImplementedError
-        
+
     def get_target_dnn_dataset(self, train_or_test='train'):
         '''
         Define your target_dnn_dataset under the condition of "train_or_test".
         Return a torch.utils.data.Dataset object.
         '''
         raise NotImplementedError
-    
+
     def get_embedding_dnn_dataset(self, train_or_test='train'):
         '''
         Define your embedding_dnn_dataset under the condition of "train_or_test".
         Return a torch.utils.data.Dataset object.
         '''
         raise NotImplementedError
-        
+
     def get_target_dnn(self):
         '''
         Define your Target DNN.
         Return a torch.nn.Module.
         '''
         raise NotImplementedError
-        
+
     def get_embedding_dnn(self):
         '''
         Define your Embeding DNN.
         Return a torch.nn.Module.
         '''
         raise NotImplementedError
-        
+
     def get_pretrained_embedding_dnn(self):
         '''
         Define your Embeding DNN.
         Return a torch.nn.Module.
         '''
         return self.get_pretrained_embedding_dnn()
-        
+
     def target_dnn_callback(self, target_dnn_output):
         '''
         Often times, you want to process the output of your target dnn into something nicer.
@@ -98,7 +100,7 @@ class Index:
                 model.eval()
             except:
                 pass
-            
+
             dataset = self.get_embedding_dnn_dataset(train_or_test='train')
             dataloader = torch.utils.data.DataLoader(
                 dataset,
@@ -107,7 +109,7 @@ class Index:
                 num_workers=self.get_num_workers(),
                 pin_memory=True
             )
-            
+
             embeddings = []
             with torch.no_grad():
 
@@ -117,18 +119,18 @@ class Index:
                     embeddings.append(output)
                 embeddings = torch.cat(embeddings, dim=0)
                 embeddings = embeddings.numpy()
-            
+
             bucketter = tasti.bucketters.FPFRandomBucketter(self.config.nb_train, self.seed)
             reps, _, _ = bucketter.bucket(embeddings, self.config.max_k)
             self.training_idxs = reps
         else:
             print('number of training instances: ', self.config.nb_train)
             self.training_idxs = self.rand.choice(
-                    len(self.get_embedding_dnn_dataset(train_or_test='train')),
-                    size=self.config.nb_train,
-                    replace=False
+                len(self.get_embedding_dnn_dataset(train_or_test='train')),
+                size=self.config.nb_train,
+                replace=False
             )
-            
+
     def do_training(self):
         '''
         Fine-tuning the embedding dnn via triplet loss. 
@@ -137,10 +139,10 @@ class Index:
             model = self.get_target_dnn()
             model.eval()
             model.cuda()
-            
+
             for idx in tqdm(self.training_idxs, desc='Target DNN'):
                 self.target_dnn_cache[idx]
-            
+
             dataset = self.get_embedding_dnn_dataset(train_or_test='train')
             triplet_dataset = tasti.data.TripletDataset(
                 dataset=dataset,
@@ -156,22 +158,22 @@ class Index:
                 num_workers=self.get_num_workers(),
                 pin_memory=True
             )
-            
+
             model = self.get_embedding_dnn()
             model.train()
             model.cuda()
             loss_fn = tasti.TripletLoss(self.config.train_margin)
             optimizer = torch.optim.Adam(model.parameters(), lr=self.config.train_lr)
-            
+
             for anchor, positive, negative in tqdm(dataloader, desc='Training Step'):
                 anchor = anchor.cuda(non_blocking=True)
                 positive = positive.cuda(non_blocking=True)
                 negative = negative.cuda(non_blocking=True)
-                
+
                 e_a = model(anchor)
                 e_p = model(positive)
                 e_n = model(negative)
-                
+
                 optimizer.zero_grad()
                 loss = loss_fn(e_a, e_p, e_n)
                 loss.backward()
@@ -182,7 +184,7 @@ class Index:
             self.embedding_dnn = model
         else:
             self.embedding_dnn = self.get_pretrained_embedding_dnn()
-            
+
         del self.target_dnn_cache
         self.target_dnn_cache = tasti.DNNOutputCache(
             self.get_target_dnn(),
@@ -190,8 +192,7 @@ class Index:
             self.target_dnn_callback
         )
         self.target_dnn_cache = self.override_target_dnn_cache(self.target_dnn_cache, train_or_test='test')
-        
-            
+
     def do_infer(self):
         '''
         With our fine-tuned embedding dnn, we now compute embeddings for the entire dataset.
@@ -218,10 +219,9 @@ class Index:
                     pass
                 with torch.no_grad():
                     output = model(batch).cpu()
-                embeddings.append(output)  
+                embeddings.append(output)
             embeddings = torch.cat(embeddings, dim=0)
             embeddings = embeddings.numpy()
-
 
             np.save(save_directory, embeddings)
             self.embeddings = embeddings
@@ -231,7 +231,7 @@ class Index:
             except:
                 self.embeddings = None
 
-    def do_bucketting(self, percent_fpf = 0.75):
+    def do_bucketting(self, percent_fpf=0.75):
         '''
         Given our embeddings, cluster them and store the reps, topk_reps, and topk_dists to finalize our TASTI.
         '''
@@ -240,32 +240,32 @@ class Index:
 
         if self.config.do_bucketting:
             bucketter = tasti.bucketters.FPFRandomBucketter(self.config.nb_buckets, self.seed)
-            self.reps, self.topk_reps, self.topk_dists = bucketter.bucket(self.embeddings, self.config.max_k, percent_fpf=percent_fpf)
+            self.reps, self.topk_reps, self.topk_dists = bucketter.bucket(self.embeddings, self.config.max_k,
+                                                                          percent_fpf=percent_fpf)
 
-            np.save( os.path.join(self.cache_dir, 'reps.npy'), self.reps)
-            np.save( os.path.join(self.cache_dir, 'topk_reps.npy'), self.topk_reps)
-            np.save( os.path.join(self.cache_dir, 'topk_dists.npy'), self.topk_dists)
+            np.save(os.path.join(self.cache_dir, 'reps.npy'), self.reps)
+            np.save(os.path.join(self.cache_dir, 'topk_reps.npy'), self.topk_reps)
+            np.save(os.path.join(self.cache_dir, 'topk_dists.npy'), self.topk_dists)
         else:
-            self.reps = np.load( os.path.join(self.cache_dir, '/reps.npy'))
-            self.topk_reps = np.load( os.path.join(self.cache_dir, '/topk_reps.npy') )
-            self.topk_dists = np.load( os.path.join(self.cache_dir, '/topk_dists.npy') )
-            
+            self.reps = np.load(os.path.join(self.cache_dir, '/reps.npy'))
+            self.topk_reps = np.load(os.path.join(self.cache_dir, '/topk_reps.npy'))
+            self.topk_dists = np.load(os.path.join(self.cache_dir, '/topk_dists.npy'))
+
     def crack(self):
         cache = self.target_dnn_cache.cache
         cached_idxs = []
         for idx in range(len(cache)):
             if cache[idx] != None:
-                cached_idxs.append(idx)        
+                cached_idxs.append(idx)
         cached_idxs = np.array(cached_idxs)
         bucketter = tasti.bucketters.CrackingBucketter(self.config.nb_buckets)
         self.reps, self.topk_reps, self.topk_dists = bucketter.bucket(self.embeddings, self.config.max_k, cached_idxs)
 
-        np.save( os.path.join(self.cache_dir, '/reps.npy'), self.reps)
-        np.save( os.path.join(self.cache_dir, '/topk_reps.npy'), self.topk_reps)
-        np.save( os.path.join(self.cache_dir, '/topk_dists.npy'), self.topk_dists)
+        np.save(os.path.join(self.cache_dir, '/reps.npy'), self.reps)
+        np.save(os.path.join(self.cache_dir, '/topk_reps.npy'), self.topk_reps)
+        np.save(os.path.join(self.cache_dir, '/topk_dists.npy'), self.topk_dists)
 
-        
-    def init(self, percent_fpf = 0.75):
+    def init(self, percent_fpf=0.75):
         print('index initializing....')
         self.do_mining()
         print('mining complete!')
@@ -275,6 +275,6 @@ class Index:
         print('inferring complete!')
         self.do_bucketting(percent_fpf=percent_fpf)
         print('bucketing complete!')
-        
+
         for rep in tqdm(self.reps, desc='Target DNN Invocations'):
             self.target_dnn_cache[rep]

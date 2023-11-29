@@ -1,14 +1,15 @@
 from typing import Sequence
 
-import numpy as np
-import math
 
-from supg.datasource import DataSource
+# import numpy as np
+# import math
+#
+# from benchmarks.stanford.supg.supg.datasource import DataSource
 
 class ApproxQuery:
     def __init__(
             self,
-            qtype:str="pt",
+            qtype: str = "pt",
             min_precision=None,
             min_recall=None,
             delta=0.01,

@@ -1,10 +1,10 @@
-import cv2
-import swag
-import json
+# import cv2
+# import swag
+# import json
 import torch
 import numpy as np
-import torchvision
-import torchvision.transforms as transforms
+# import torchvision
+# import torchvision.transforms as transforms
 from tqdm.autonotebook import tqdm
 
 class TripletDataset(torch.utils.data.Dataset):

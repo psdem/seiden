@@ -18,12 +18,12 @@ from benchmarks.stanford.tasti.tasti.seiden.data.data_loader import ImageDataset
 from tqdm import tqdm
 import time
 from src.motivation.tasti_wrapper import InferenceDataset
-from src.system_architecture.alternate import EKO_alternate
+from src.system_architecture.alternate import EkoAlternate
 
 
 
 
-class EKO_ratio(EKO_alternate):
+class EKO_ratio(EkoAlternate):
     def __init__(self, config, images, initial_anchor = 0.8, exploit_ratio = 0.5):
         self.images = images
         self.initial_anchor = initial_anchor

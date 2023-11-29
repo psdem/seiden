@@ -6,25 +6,26 @@ Look at the README.md file for information about how to get the data to run this
 '''
 import os
 import cv2
-import swag
 import json
-import tasti
+import benchmarks.stanford.tasti.tasti
 import torch
 import pandas as pd
 import numpy as np
 import torchvision
 from scipy.spatial import distance
-import torchvision.transforms as transforms
+# import torchvision.transforms as transforms
 from collections import defaultdict
 from tqdm.autonotebook import tqdm
-from blazeit.aggregation.samplers import ControlCovariateSampler
-from tasti.eko.queries.queries import NightStreetAggregateQuery,\
-                                    NightStreetAveragePositionAggregateQuery, \
-                                    NightStreetLimitQuery, \
-                                    NightStreetSUPGPrecisionQuery,\
-                                    NightStreetSUPGRecallQuery, \
-                                    NightStreetLHSPrecisionQuery, \
-                                    NightStreetLHSRecallQuery
+from benchmarks.stanford.blazeit.blazeit.aggregation.samplers import ControlCovariateSampler
+from benchmarks.stanford.swag_python import swag
+from benchmarks.stanford.tasti import tasti
+from benchmarks.stanford.tasti.tasti.seiden.queries.queries import NightStreetAggregateQuery, \
+    NightStreetAveragePositionAggregateQuery, \
+    NightStreetLimitQuery, \
+    NightStreetSUPGPrecisionQuery, \
+    NightStreetSUPGRecallQuery, \
+    NightStreetLHSPrecisionQuery, \
+    NightStreetLHSRecallQuery
 
 # Feel free to change this!
 ROOT_DATA_TRAIN_DIR = '/srv/data/jbang36/tasti_data/video_data/jackson14'
@@ -33,6 +34,8 @@ ROOT_DATA_TEST_DIR = '/srv/data/jbang36/tasti_data/video_data/jackson17'
 '''
 VideoDataset allows you to access frames of a given video.
 '''
+
+
 class VideoDataset(torch.utils.data.Dataset):
     def __init__(self, video_fp, list_of_idxs=[], transform_fn=lambda x: x):
         self.video_fp = video_fp
@@ -45,7 +48,7 @@ class VideoDataset(torch.utils.data.Dataset):
         self.length = self.cum_frames[-1]
         self.current_idx = 0
         self.init()
-        
+
     def init(self):
         if len(self.list_of_idxs) == 0:
             self.frames = None
@@ -55,7 +58,7 @@ class VideoDataset(torch.utils.data.Dataset):
                 self.seek(idx)
                 frame = self.read()
                 self.frames.append(frame)
-            
+
     def transform(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = self.transform_fn(frame)
@@ -65,27 +68,30 @@ class VideoDataset(torch.utils.data.Dataset):
         if self.current_idx != idx:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, idx - 1)
             self.current_idx = idx
-        
+
     def read(self):
         _, frame = self.cap.read()
         frame = self.transform(frame)
         self.current_idx += 1
         return frame
-    
+
     def __len__(self):
         return self.length if len(self.list_of_idxs) == 0 else len(self.list_of_idxs)
-    
+
     def __getitem__(self, idx):
         if len(self.list_of_idxs) == 0:
             self.seek(idx)
             frame = self.read()
         else:
             frame = self.frames[idx]
-        return frame   
+        return frame
+
 
 '''
 LabelDataset loads the target dnn .csv files and allows you to access the target dnn outputs of given frames.
 '''
+
+
 class LabelDataset(torch.utils.data.Dataset):
     def __init__(self, labels_fp, length):
         df = pd.read_csv(labels_fp)
@@ -97,16 +103,19 @@ class LabelDataset(torch.utils.data.Dataset):
         for frame_idx in range(length):
             labels.append(frame_to_rows[frame_idx])
         self.labels = labels
-        
+
     def __len__(self):
         return len(self.labels)
-    
+
     def __getitem__(self, idx):
         return self.labels[idx]
+
 
 '''
 Preprocessing function of a frame before it is passed to the Embedding DNN.
 '''
+
+
 def night_street_embedding_dnn_transform_fn(frame):
     xmin, xmax, ymin, ymax = 0, 1750, 540, 1080
     frame = frame[ymin:ymax, xmin:xmax]
@@ -114,15 +123,19 @@ def night_street_embedding_dnn_transform_fn(frame):
     frame = torchvision.transforms.functional.to_tensor(frame)
     return frame
 
+
 def night_street_target_dnn_transform_fn(frame):
     xmin, xmax, ymin, ymax = 0, 1750, 540, 1080
     frame = frame[ymin:ymax, xmin:xmax]
     frame = torchvision.transforms.functional.to_tensor(frame)
     return frame
 
+
 '''
 Defines our notion of 'closeness' as described in the paper for two labels for only one object type.
 '''
+
+
 def night_street_is_close_helper(label1, label2):
     if len(label1) != len(label2):
         return False
@@ -142,7 +155,8 @@ def night_street_is_close_helper(label1, label2):
         if expected_counter != counter:
             break
     return len(label1) == counter
-        
+
+
 class NightStreetOfflineIndex(tasti.Index):
 
     def get_num_workers(self):
@@ -157,12 +171,12 @@ class NightStreetOfflineIndex(tasti.Index):
         '''
         model = torch.nn.Identity()
         return model
-        
+
     def get_embedding_dnn(self):
         model = torchvision.models.resnet18(pretrained=True, progress=True)
         model.fc = torch.nn.Linear(512, 128)
         return model
-    
+
     def get_pretrained_embedding_dnn(self):
         '''
         Note that the pretrained embedding dnn sometime differs from the embedding dnn.
@@ -170,7 +184,7 @@ class NightStreetOfflineIndex(tasti.Index):
         model = torchvision.models.resnet18(pretrained=True, progress=True)
         model.fc = torch.nn.Identity()
         return model
-    
+
     def get_target_dnn_dataset(self, train_or_test):
         if train_or_test == 'train':
             video_fp = os.path.join(ROOT_DATA_TRAIN_DIR, '2017-12-14')
@@ -181,7 +195,7 @@ class NightStreetOfflineIndex(tasti.Index):
             transform_fn=night_street_target_dnn_transform_fn
         )
         return video
-    
+
     def get_embedding_dnn_dataset(self, train_or_test):
         if train_or_test == 'train':
             video_fp = os.path.join(ROOT_DATA_TRAIN_DIR, '2017-12-14')
@@ -192,7 +206,7 @@ class NightStreetOfflineIndex(tasti.Index):
             transform_fn=night_street_embedding_dnn_transform_fn
         )
         return video
-    
+
     def override_target_dnn_cache(self, target_dnn_cache, train_or_test):
         if train_or_test == 'train':
             labels_fp = os.path.join(ROOT_DATA_TRAIN_DIR, 'jackson-town-square-2017-12-14.csv')
@@ -203,7 +217,7 @@ class NightStreetOfflineIndex(tasti.Index):
             length=len(target_dnn_cache)
         )
         return labels
-    
+
     def is_close(self, label1, label2):
         objects = set()
         for obj in (label1 + label2):
@@ -216,6 +230,7 @@ class NightStreetOfflineIndex(tasti.Index):
                 return False
         return True
 
+
 class NightStreetOfflineConfig(tasti.IndexConfig):
     def __init__(self):
         super().__init__()
@@ -223,7 +238,7 @@ class NightStreetOfflineConfig(tasti.IndexConfig):
         self.do_training = False
         self.do_infer = False
         self.do_bucketting = True
-        
+
         self.batch_size = 16
         self.nb_train = 3000
         self.train_margin = 1.0
@@ -232,7 +247,7 @@ class NightStreetOfflineConfig(tasti.IndexConfig):
         self.nb_buckets = 7000
         self.nb_training_its = 12000
 
-    
+
 if __name__ == '__main__':
     import sys
 
@@ -264,4 +279,3 @@ if __name__ == '__main__':
     query.execute_metrics(10000)
 
     sys.stdout.close()
-

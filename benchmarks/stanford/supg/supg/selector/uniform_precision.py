@@ -1,12 +1,12 @@
 from typing import Sequence
 
 import numpy as np
-import math
+# import math
 
-from supg.datasource import DataSource
-from supg.sampler import Sampler, ImportanceSampler, SamplingBounds
-from supg.selector.base_selector import BaseSelector, ApproxQuery
-from .naive_recall import calc_lb
+from benchmarks.stanford.supg.supg.datasource import DataSource
+from benchmarks.stanford.supg.supg.sampler import Sampler, ImportanceSampler, SamplingBounds
+from benchmarks.stanford.supg.supg.selector.base_selector import BaseSelector, ApproxQuery
+# from .naive_recall import calc_lb
 
 
 class UniformPrecisionSelector(BaseSelector):

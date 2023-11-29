@@ -7,19 +7,19 @@ There are some hypothesis we want to confirm.
 3. Rather than using one or the other, using both indicators will give us better samples
 """
 
-from src.system_architecture.parameter_search import EKO_PS, EKOPSConfig
+from src.system_architecture.parameter_search import EkoParameterSearch, EKOPSConfig, generate_matrix
 from scipy.stats import pearsonr, spearmanr
 import numpy as np
 from benchmarks.stanford.tasti.tasti.query import BaseQuery
 from sklearn.metrics import precision_score, recall_score, f1_score
+
+
 #### confirmation of the 1st and 2nd hypothesis.
 
 
 ### we need to understand where the anchors are placed and how the labels change.
 ### first, get the labels for a given query.
 ### second, get where the anchors are placed.
-
-
 
 
 #### create a custom query to examine the results
@@ -29,7 +29,6 @@ def query_process3(index):
     y_pred, y_true = query.execute()
 
     return y_pred, y_true
-
 
 
 def query_process4_uadetrac(index):
@@ -62,8 +61,10 @@ def query_process4(index):
     y_pred, y_true = query.execute()
     y_pred[y_pred < 0.5] = 0
     y_pred[y_pred >= 0.5] = 1
-    if np.count_nonzero(np.isnan(y_pred)) != 0: print('nan in y_pred', np.count_nonzero(np.isnan(y_pred)))
-    elif np.isnan(y_true).any(): print('nan in y_true', y_true)
+    if np.count_nonzero(np.isnan(y_pred)) != 0:
+        print('nan in y_pred', np.count_nonzero(np.isnan(y_pred)))
+    elif np.isnan(y_true).any():
+        print('nan in y_true', y_true)
     times.append((precision_score(y_true, y_pred), recall_score(y_true, y_pred), f1_score(y_true, y_pred)))
     reps.append(index.reps)
 
@@ -97,6 +98,7 @@ def query_process4(index):
 
     return times, reps
 
+
 def query_process4_simple(index):
     times = []
     query = CustomQuery(index)
@@ -129,7 +131,6 @@ def query_process4_simple(index):
     all_reps.append(index.reps)
     y_trues.append(y_true)
 
-
     query = Custom4(index)
     y_pred, y_true = query.execute_simple()
     y_pred[y_pred < 0.5] = 0
@@ -146,7 +147,6 @@ def query_process4_simple(index):
     all_reps.append(index.reps)
     y_trues.append(y_true)
 
-
     return times, all_reps, y_trues
 
 
@@ -157,7 +157,6 @@ class CustomQuery(BaseQuery):
         target_dnn = self.index.target_dnn_cache
         scoring_func = self.score
         index.build_additional_anchors(target_dnn, scoring_func)
-
 
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 0 else 0.0
@@ -193,21 +192,26 @@ class CustomQuery(BaseQuery):
         y_true = np.array([float(tmp) for tmp in y_true])
         return y_pred, y_true
 
+
 class Custom5(CustomQuery):
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 4 else 0.0
+
 
 class Custom6(CustomQuery):
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 5 else 0.0
 
+
 class Custom7(CustomQuery):
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 6 else 0.0
 
+
 class Custom8(CustomQuery):
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 7 else 0.0
+
 
 class Custom9(CustomQuery):
     def score(self, target_dnn_output):
@@ -223,13 +227,16 @@ class Custom2(CustomQuery):
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 1 else 0.0
 
+
 class Custom3(CustomQuery):
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 2 else 0.0
 
+
 class Custom4(CustomQuery):
     def score(self, target_dnn_output):
         return 1.0 if len(target_dnn_output) > 3 else 0.0
+
 
 def generate_label_dist(eko, images, random_indices, done):
     train_or_test = None
@@ -263,7 +270,7 @@ def pixel_vs_temporal(images, video_name):
     nb_buckets = 1000
     ekoconfig = EKOPSConfig(video_name, nb_buckets=nb_buckets)
 
-    eko = EKO_PS(ekoconfig, images)
+    eko = EkoParameterSearch(ekoconfig, images)
     choices = np.arange(len(images))
     n_sample = nb_buckets
     random_indices = np.random.choice(choices, n_sample, replace=False)
@@ -277,10 +284,10 @@ def pixel_vs_temporal(images, video_name):
 
     ### compute the pixel distances
     dataset_length = len(images)
-    block, done = eko.generate_matrix(images_downsampled, random_indices)
+    block, done = generate_matrix(images_downsampled, random_indices)
     print(block.shape)
-    pixel_uncertainty = block[:,0]
-    temporal_uncertainty = block[:,1]
+    pixel_uncertainty = block[:, 0]
+    temporal_uncertainty = block[:, 1]
     label_uncertainty, _ = generate_label_dist(eko, images, random_indices, done)
 
     for i in range(len(pixel_uncertainty)):
@@ -294,11 +301,11 @@ def pixel_vs_temporal(images, video_name):
     print(len(label_uncertainty))
     print(len(normalized_temporal_uncertainty))
     print(len(normalized_pixel_uncertainty))
-    assert(len(label_uncertainty) == len(normalized_pixel_uncertainty))
-    assert(len(label_uncertainty) == len(normalized_temporal_uncertainty))
+    assert (len(label_uncertainty) == len(normalized_pixel_uncertainty))
+    assert (len(label_uncertainty) == len(normalized_temporal_uncertainty))
 
     p_pixel, _ = pearsonr(normalized_pixel_uncertainty, label_uncertainty)
-    p_temp, _  = pearsonr(normalized_temporal_uncertainty, label_uncertainty)
+    p_temp, _ = pearsonr(normalized_temporal_uncertainty, label_uncertainty)
 
     s_pixel, _ = spearmanr(normalized_pixel_uncertainty, label_uncertainty)
     s_temp, _ = spearmanr(normalized_temporal_uncertainty, label_uncertainty)
@@ -307,6 +314,3 @@ def pixel_vs_temporal(images, video_name):
     print(s_pixel, s_temp)
 
     return p_pixel, p_temp, s_pixel, s_temp
-
-
-

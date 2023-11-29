@@ -4,18 +4,18 @@ Note that for performance reasons, we have reduced the intensity of the hyperpar
 much smaller model. Look at the README.md file for information about how to get the data to run this code.
 '''
 import os
-import cv2
-import swag
-import json
-import tasti
+# import cv2
+# import swag
+# import json
+import benchmarks.stanford.tasti.tasti
 import torch
 import torchvision
-import numpy as np
-import pandas as pd
-from tqdm.autonotebook import tqdm
-from scipy.spatial import distance
-from collections import defaultdict
-import torchvision.transforms as transforms
+# import numpy as np
+# import pandas as pd
+# from tqdm.autonotebook import tqdm
+# from scipy.spatial import distance
+# from collections import defaultdict
+# import torchvision.transforms as transforms
 from tasti.examples.night_street_offline import VideoDataset
 from tasti.examples.night_street_offline import night_street_is_close_helper
 from tasti.examples.night_street_offline import night_street_embedding_dnn_transform_fn

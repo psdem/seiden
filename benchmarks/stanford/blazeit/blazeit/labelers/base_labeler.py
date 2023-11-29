@@ -1,12 +1,12 @@
 import time
 from collections import defaultdict
 
-import numpy as np
+# import numpy as np
 import pandas as pd
 
-import swag
+from benchmarks.stanford.blazeit.blazeit.data.video_data import get_video_data
+from benchmarks.stanford.swag_python import swag
 
-from blazeit.data.video_data import get_video_data
 
 class BaseLabeler(object):
     def __init__(self, record_thresh, base_name, vid_fname, return_thresh=None):

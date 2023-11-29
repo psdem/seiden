@@ -6,9 +6,9 @@ Look at the README.md file for information about how to get the data to run this
 '''
 import os
 import cv2
-import swag
+import benchmarks.stanford.swag_python.swag
 import json
-import tasti
+import benchmarks.stanford.tasti.tasti
 import torch
 import pandas as pd
 import numpy as np
@@ -17,7 +17,7 @@ from scipy.spatial import distance
 import torchvision.transforms as transforms
 from collections import defaultdict
 from tqdm.autonotebook import tqdm
-from blazeit.aggregation.samplers import ControlCovariateSampler
+from benchmarks.stanford.blazeit.blazeit.aggregation.samplers import ControlCovariateSampler
 
 # Feel free to change this!
 ROOT_DATA_TRAIN_DIR = '/srv/data/jbang36/tasti_data/video_data/jackson14'

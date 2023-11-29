@@ -1,25 +1,26 @@
-
 import os
 import cv2
-import swag
+# import swag
 import json
-import tasti
-import torch
+# import benchmarks.stanford.tasti.tasti
+# import torch
+import torch.utils.data
 import pandas as pd
 import numpy as np
-import torchvision
-from scipy.spatial import distance
-import torchvision.transforms as transforms
+# import torchvision
+# from scipy.spatial import distance
+# import torchvision.transforms as transforms
 from collections import defaultdict
 from tqdm.autonotebook import tqdm
-from blazeit.aggregation.samplers import ControlCovariateSampler
+# from benchmarks.stanford.blazeit.blazeit.aggregation.samplers import ControlCovariateSampler
 from PIL import Image
 
+from benchmarks.stanford.swag_python import swag
 
 
 class ImageDataset(torch.utils.data.Dataset):
 
-    def __init__(self, video_fp, list_of_idxs=[], transform_fn=lambda x: x):
+    def __init__(self, video_fp, list_of_idxs=None, transform_fn=lambda x: x):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -27,6 +28,8 @@ class ImageDataset(torch.utils.data.Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
+        if list_of_idxs is None:
+            list_of_idxs = []
         self.video_fp = video_fp
         self.list_of_idxs = []
         self.transform_fn = transform_fn
@@ -48,7 +51,6 @@ class ImageDataset(torch.utils.data.Dataset):
         frame = self.transform_fn(frame)
         return frame
 
-
     def read(self, idx):
         idx_str = str(idx).zfill(9)
         img_name = os.path.join(self.video_fp, 'images', idx_str + '.jpg')
@@ -69,10 +71,10 @@ class ImageDataset(torch.utils.data.Dataset):
         return frame
 
 
-
-
 class VideoDataset(torch.utils.data.Dataset):
-    def __init__(self, video_fp, list_of_idxs=[], transform_fn=None):
+    def __init__(self, video_fp, list_of_idxs=None, transform_fn=None):
+        if list_of_idxs is None:
+            list_of_idxs = []
         self.video_fp = video_fp
         self.list_of_idxs = []
         self.transform_fn = transform_fn
@@ -127,8 +129,6 @@ class VideoDataset(torch.utils.data.Dataset):
         else:
             frame = self.frames[idx]
         return frame
-
-
 
 
 class LabelDataset(torch.utils.data.Dataset):

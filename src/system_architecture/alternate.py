@@ -1,3 +1,11 @@
+import os
+import torch
+import numpy as np
+import torchvision
+from benchmarks.stanford.tasti.tasti.index import Index
+from benchmarks.stanford.tasti.tasti.seiden.data.data_loader import LabelDataset  # ImageDataset,
+from src.motivation.tasti_wrapper import InferenceDataset
+
 """
 Advancement from simple algorithm.
 We will adjust exploration and exploitation when selecting the anchors
@@ -19,34 +27,28 @@ Query Processing:
 
 """
 
-import os
-import torch
-import numpy as np
-import torchvision
-import sys
-sys.path.append('/nethome/jbang36/seiden')
 
-from sklearn.linear_model import LinearRegression
-from benchmarks.stanford.tasti.tasti.index import Index
-from benchmarks.stanford.tasti.tasti.config import IndexConfig
+# import sys
 
-from benchmarks.stanford.tasti.tasti.seiden.data.data_loader import ImageDataset, LabelDataset
-from tqdm import tqdm
-import time
-from src.motivation.tasti_wrapper import InferenceDataset
+# sys.path.append('/nethome/jbang36/seiden')
+
+# from sklearn.linear_model import LinearRegression
+
+# from benchmarks.stanford.tasti.tasti.config import IndexConfig
 
 
+# from tqdm import tqdm
+# import time
 
-class EKO_alternate(Index):
-    def __init__(self, config, images, initial_anchor = 0.8):
+
+class EkoAlternate(Index):
+    def __init__(self, config, images, initial_anchor=0.8):
         self.images = images
         self.initial_anchor = initial_anchor
         super().__init__(config)
 
-
     def __repr__(self):
         return 'EKO'
-
 
     def do_bucketting(self, percent_fpf=0.75):
         if self.config.do_bucketting:
@@ -60,14 +62,12 @@ class EKO_alternate(Index):
             self.topk_reps = np.load(os.path.join(self.cache_dir, 'topk_reps.npy'))
             self.topk_dists = np.load(os.path.join(self.cache_dir, 'topk_dists.npy'))
 
-
     def calculate_rep_methodology(self):
         rep_indices, dataset_length = self.get_reps()  ### we need to sort the reps
         top_reps = self.calculate_top_reps(dataset_length, rep_indices)
         top_dists = self.calculate_top_dists(dataset_length, rep_indices, top_reps)
 
         return rep_indices, top_reps, top_dists
-
 
     def get_reps(self):
         """
@@ -100,8 +100,6 @@ class EKO_alternate(Index):
         self.base_reps = rep_indices
         return rep_indices, dataset_length
 
-
-
     def build_additional_anchors(self, target_dnn_cache, scoring_func):
         #### we assume self.reps is already built
         #### we will have to modify self.reps, self.topk_reps, self.topk_dists
@@ -119,17 +117,15 @@ class EKO_alternate(Index):
 
         for i in range(n_reps - curr_len):
             ### get the location with max dist
-            if i % 2 == 0: ### alternate between exploration and exploitation
+            if i % 2 == 0:  ### alternate between exploration and exploitation
                 chosen_section_start = np.argmax(dists)
             else:
                 chosen_section_start = np.argmax(temporal_dists)
 
-            left, right = rep_indices[chosen_section_start], rep_indices[chosen_section_start+1]
+            left, right = rep_indices[chosen_section_start], rep_indices[chosen_section_start + 1]
             middle = (left + right) // 2
             rep_indices, dists, temporal_dists = self.update(rep_indices, dists, temporal_dists,
                                                              left, middle, right, scoring_func, target_dnn_cache)
-
-
 
         dataset_length = len(topk_reps)
         top_reps = self.calculate_top_reps(dataset_length, rep_indices)
@@ -141,8 +137,6 @@ class EKO_alternate(Index):
         np.save(os.path.join(self.cache_dir, 'reps.npy'), self.reps)
         np.save(os.path.join(self.cache_dir, 'topk_reps.npy'), self.topk_reps)
         np.save(os.path.join(self.cache_dir, 'topk_dists.npy'), self.topk_dists)
-
-
 
     def update(self, rep_indices, dists, temporal_dists, left, middle, right, scoring_func, target_dnn_cache):
         ## put middle in rep_indices
@@ -162,30 +156,26 @@ class EKO_alternate(Index):
         right_label = scoring_func(target_dnn_cache[right])
 
         dists.pop(loc - 1)
-        dists.insert(loc - 1, abs(middle_label - left_label) * (10**base_digits) + temporal_dists[loc - 1])
-        dists.insert(loc, abs(right_label - middle_label) * (10**base_digits) + temporal_dists[loc])
+        dists.insert(loc - 1, abs(middle_label - left_label) * (10 ** base_digits) + temporal_dists[loc - 1])
+        dists.insert(loc, abs(right_label - middle_label) * (10 ** base_digits) + temporal_dists[loc])
 
         return rep_indices, dists, temporal_dists
-
-
 
     def init_label_distances(self, rep_indices, target_dnn_cache, scoring_func):
         relevant_cache = [scoring_func(target_dnn_cache[rep_index]) for rep_index in rep_indices]
         ### get max temporal gap
         temporal_dist = []
         for i in range(len(rep_indices) - 1):
-            temporal_dist.append( rep_indices[i+1] - rep_indices[i] )
+            temporal_dist.append(rep_indices[i + 1] - rep_indices[i])
         max_temporal_dist = max(temporal_dist)
-        base_digits = len(str(max_temporal_dist)) ## calculate how many digits
-
+        base_digits = len(str(max_temporal_dist))  ## calculate how many digits
 
         ### compute the label distances but also incorporate temporal dist as well
         distances = []
         for i in range(len(relevant_cache) - 1):
-            distances.append(abs(relevant_cache[i+1] - relevant_cache[i]) * (10**base_digits) + temporal_dist[i])
+            distances.append(abs(relevant_cache[i + 1] - relevant_cache[i]) * (10 ** base_digits) + temporal_dist[i])
 
         return distances, temporal_dist
-
 
     def calculate_top_reps(self, dataset_length, rep_indices):
         """
@@ -222,24 +212,22 @@ class EKO_alternate(Index):
         top_dists = np.ndarray(shape=(dataset_length, 2), dtype=np.int32)
 
         for i in range(dataset_length):
-            #top_dists[i, 0] = abs(i - top_reps[i, 1])
-            #top_dists[i, 1] = abs(i - top_reps[i, 0])
+            # top_dists[i, 0] = abs(i - top_reps[i, 1])
+            # top_dists[i, 1] = abs(i - top_reps[i, 0])
             top_dists[i, 0] = abs(i - top_reps[i, 0])
             top_dists[i, 1] = abs(i - top_reps[i, 1])
 
         return top_dists
-
 
     def _get_closest_reps(self, rep_indices, curr_idx):
         result = []
 
         for i, rep_idx in enumerate(rep_indices):
             if rep_idx - curr_idx >= 0:
-                result.append(rep_indices[i-1])
+                result.append(rep_indices[i - 1])
                 result.append(rep_indices[i])
                 break
         return result
-
 
     ##### Unimportant functions ######
 
@@ -258,7 +246,7 @@ class EKO_alternate(Index):
         labels = LabelDataset(
             labels_fp=labels_fp,
             length=len(target_dnn_cache),
-            category = self.config.category
+            category=self.config.category
         )
         return labels
 
@@ -290,4 +278,3 @@ class EKO_alternate(Index):
         model = torchvision.models.resnet18(pretrained=True, progress=True)
         model.fc = torch.nn.Identity()
         return model
-

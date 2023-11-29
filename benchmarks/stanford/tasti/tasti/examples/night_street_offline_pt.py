@@ -6,18 +6,18 @@ Look at the README.md file for information about how to get the data to run this
 '''
 import os
 import cv2
-import swag
 import json
-import tasti
 import torch
 import pandas as pd
 import numpy as np
 import torchvision
 from scipy.spatial import distance
-import torchvision.transforms as transforms
+# import torchvision.transforms as transforms
 from collections import defaultdict
 from tqdm.autonotebook import tqdm
-from blazeit.aggregation.samplers import ControlCovariateSampler
+# from benchmarks.stanford.blazeit.blazeit.aggregation.samplers import ControlCovariateSampler
+from benchmarks.stanford.swag_python import swag
+from benchmarks.stanford.tasti import tasti
 
 # Feel free to change this!
 ROOT_DATA_TRAIN_DIR = '/srv/data/jbang36/tasti_data/video_data/jackson14'
@@ -29,7 +29,9 @@ VideoDataset allows you to access frames of a given video.
 
 
 class VideoDataset(torch.utils.data.Dataset):
-    def __init__(self, video_fp, list_of_idxs=[], transform_fn=lambda x: x):
+    def __init__(self, video_fp, list_of_idxs=None, transform_fn=lambda x: x):
+        if list_of_idxs is None:
+            list_of_idxs = []
         self.video_fp = video_fp
         self.list_of_idxs = []
         self.transform_fn = transform_fn

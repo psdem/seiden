@@ -5,15 +5,15 @@ In this file, we implement a wrapper for tasti
 from benchmarks.stanford.tasti.tasti.index import Index
 from benchmarks.stanford.tasti.tasti.config import IndexConfig
 import torchvision
-import cv2
+from torchvision.transforms import functional
+# import cv2
 from scipy.spatial import distance
 import os
 import torch
+from torch.utils.data import Dataset
 import pandas as pd
 from collections import defaultdict
 import numpy as np
-
-
 
 '''
 Defines our notion of 'closeness' as described in the paper for two labels for only one object type.
@@ -25,12 +25,11 @@ class MotivationTasti(Index):
         self.images = images
         super().__init__(config)
 
-
     def get_num_workers(self):
         return 1
 
     def get_cache_dir(self):
-        return '/srv/data/jbang36/tasti_data/cache/tasti_triplet'
+        return f'{self.config.cache_dir}/tasti_triplet'
 
     def get_target_dnn(self):
         '''
@@ -52,16 +51,16 @@ class MotivationTasti(Index):
         model.fc = torch.nn.Identity()
         return model
 
-    def get_target_dnn_dataset(self, train_or_test):
+    def get_target_dnn_dataset(self, train_or_test='train'):
         ### just convert the loaded data into a dataset.
         print('Image size is ', self.config.image_size)
-        dataset = InferenceDataset(self.images, image_size = self.config.image_size)
+        dataset = InferenceDataset(self.images, image_size=self.config.image_size)
         return dataset
 
-    def get_embedding_dnn_dataset(self, train_or_test):
+    def get_embedding_dnn_dataset(self, train_or_test='train'):
         return self.get_target_dnn_dataset(train_or_test)
 
-    def override_target_dnn_cache(self, target_dnn_cache, train_or_test):
+    def override_target_dnn_cache(self, target_dnn_cache, train_or_test='train'):
         root = '/srv/data/jbang36/video_data'
         ROOT_DATA = self.config.video_name
         if self.config.category == 'car':
@@ -71,7 +70,7 @@ class MotivationTasti(Index):
         labels = LabelDataset(
             labels_fp=labels_fp,
             length=len(target_dnn_cache),
-            category = self.config.category
+            category=self.config.category
         )
         return labels
 
@@ -86,8 +85,6 @@ class MotivationTasti(Index):
             if not is_redundant:
                 return False
         return True
-
-
 
 
 def inference_transforms(image_size):
@@ -107,8 +104,13 @@ def inference_transforms(image_size):
 
     return ttransforms
 
+
 class InferenceDataset(torch.utils.data.Dataset):
-    def __init__(self, images, image_size = None):
+    def __init__(self, images: np.ndarray, image_size=None):
+        """
+        :param images:
+        :param image_size:把图像变换为多大
+        """
         self.transform = inference_transforms(image_size)
         self.images = images
 
@@ -141,10 +143,6 @@ class LabelDataset(torch.utils.data.Dataset):
         return self.labels[idx]
 
 
-
-
-
-
 def night_street_is_close_helper(label1, label2):
     if len(label1) != len(label2):
         return False
@@ -169,12 +167,15 @@ def night_street_is_close_helper(label1, label2):
 '''
 Preprocessing function of a frame before it is passed to the Embedding DNN.
 '''
+
+
 def night_street_embedding_dnn_transform_fn(frame):
     xmin, xmax, ymin, ymax = 0, 960, 0, 540
     frame = frame[ymin:ymax, xmin:xmax]
-    #frame = cv2.resize(frame, (224, 224))
+    # frame = cv2.resize(frame, (224, 224))
     frame = torchvision.transforms.functional.to_tensor(frame)
     return frame
+
 
 def night_street_target_dnn_transform_fn(frame):
     xmin, xmax, ymin, ymax = 0, 960, 0, 540
@@ -183,9 +184,8 @@ def night_street_target_dnn_transform_fn(frame):
     return frame
 
 
-
 class MotivationConfig(IndexConfig):
-    def __init__(self, video_name, do_train, do_infer = False, category = 'car', image_size = None, nb_buckets = 7000):
+    def __init__(self, video_name, do_train, do_infer=False, category='car', image_size=None, nb_buckets=7000):
         super().__init__()
         self.video_name = video_name
         self.do_mining = do_train

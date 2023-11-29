@@ -2,7 +2,7 @@ from typing import Sequence
 
 import numpy as np
 
-from supg.selector import RecallSelector
+from benchmarks.stanford.supg.supg.selector import RecallSelector
 
 
 class JointSelector(RecallSelector):

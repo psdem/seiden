@@ -3,9 +3,9 @@ from collections import defaultdict
 import pandas as pd
 import numpy as np
 import scipy.special
-import feather
+# import feather
 
-from supg import datasource
+from benchmarks.stanford.supg.supg import datasource
 
 
 def load_jackson_source(probs_fname, csv_fname, obj_name):
@@ -34,6 +34,7 @@ def load_jackson_source(probs_fname, csv_fname, obj_name):
     df = pd.DataFrame(data)
     return df
 
+
 def get_jackson_source(drop_p=None, seed=None) -> datasource.DataSource:
     # probs_fname = '../../data/jackson/2017-12-17-s50-bin.out'
     # csv_fname = '../../data/jackson/jackson-town-square-2017-12-17.csv'
@@ -44,17 +45,21 @@ def get_jackson_source(drop_p=None, seed=None) -> datasource.DataSource:
     source = datasource.DFDataSource(df, drop_p=drop_p, seed=seed)
     return source
 
+
 def load_csv_source(csv_fname) -> datasource.DataSource:
     df = pd.read_csv(csv_fname)
     df['label'] = df['label'].astype('float32')
     source = datasource.DFDataSource(df)
     return source
 
+
 def get_imagenet_source() -> datasource.DataSource:
     return load_csv_source('../../data/imagenet/source.csv')
 
+
 def get_onto_source() -> datasource.DataSource:
     return load_csv_source('../../data/onto/source.csv')
+
 
 def get_tacred_source() -> datasource.DataSource:
     return load_csv_source('../../data/tacred/source.csv')

@@ -1,11 +1,11 @@
 from typing import Sequence
 
 import numpy as np
-import math
+# import math
 
-from supg.datasource import DataSource
-from supg.sampler import Sampler, ImportanceSampler, SamplingBounds
-from supg.selector.base_selector import BaseSelector, ApproxQuery
+from benchmarks.stanford.supg.supg.datasource import DataSource
+from benchmarks.stanford.supg.supg.sampler import ImportanceSampler, SamplingBounds  # Sampler,
+from benchmarks.stanford.supg.supg.selector.base_selector import BaseSelector, ApproxQuery
 
 
 class ImportancePrecisionSelector(BaseSelector):

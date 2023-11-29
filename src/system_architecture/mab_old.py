@@ -25,13 +25,13 @@ sys.path.append('/nethome/jbang36/seiden')
 
 from benchmarks.stanford.tasti.tasti.seiden.data.data_loader import ImageDataset, LabelDataset
 from src.motivation.tasti_wrapper import InferenceDataset
-from src.system_architecture.alternate import EKO_alternate
+from src.system_architecture.alternate import EkoAlternate
 from src.iframes.pyav_utils import PYAV_wrapper
 from collections import OrderedDict
 import random
 
 
-class EKO_mab_old(EKO_alternate):
+class EKO_mab_old(EkoAlternate):
     def __init__(self, config, images, video_f, anchor_percentage = 0.8, c_param = 2):
         self.images = images
         self.pyav = PYAV_wrapper(video_f) ## need up to .mp4
